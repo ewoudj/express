@@ -68,7 +68,7 @@ app\.listen(3000);
 Express supports arbitrary environments, such as \fIproduction\fR and \fIdevelopment\fR\. Developers can use the \fIconfigure()\fR method to setup needs required by the current environment\. When \fIconfigure()\fR is called without an environment name it will be run in \fIevery\fR environment prior to the environment specific callback\.
 .
 .P
-In the example below we only \fIdumpExceptions\fR, and respond with exception stack traces in \fIdevelopment\fR mode, however for both environments we utilize \fImethodOverride\fR and \fIbodyDecoder\fR\.
+In the example below we only \fIdumpExceptions\fR, and respond with exception stack traces in \fIdevelopment\fR mode, however for both environments we utilize \fImethodOverride\fR and \fIbodyDecoder\fR\. Note the use of \fIapp\.router\fR, which can (optionally) be used to mount the application routes, otherwise the first call to \fIapp\.{get,put,del,post}()\fR will mount the routes\.
 .
 .IP "" 4
 .
@@ -77,6 +77,8 @@ In the example below we only \fIdumpExceptions\fR, and respond with exception st
 app\.configure(function(){
     app\.use(connect\.methodOverride());
     app\.use(connect\.bodyDecoder());
+    app\.use(app\.router);
+    app\.use(connect\.staticProvider(__dirname + \'/public\'));
 });
 
 app\.configure(\'development\', function(){
@@ -134,7 +136,7 @@ Express supports the following settings out of the box:
 \fIenv\fR Application environment set internally, use \fIapp\.set(\'env\')\fR on \fIServer#listen()\fR
 .
 .IP "\(bu" 4
-\fIhome\fR Application base path used with \fIres\.redirect()\fR, when mounted defaults to \fIServer#route\fR, otherwise \"/\"\. Assigned on \fIServer#listen()\fR\.
+\fIhome\fR Application base path used for \fIres\.redirect()\fR and transparently handling mounted apps\.
 .
 .IP "\(bu" 4
 \fIviews\fR Root views directory defaulting to \fBCWD/views\fR
@@ -1054,6 +1056,27 @@ All views would now have \fIsession\fR available so that session data can be acc
 .nf
 
 <%= session\.name %>
+.
+.fi
+.
+.IP "" 0
+.
+.SS "app\.mounted(fn)"
+Assign a callback \fIfn\fR which is called when this \fIServer\fR is passed to \fIServer#use()\fR\.
+.
+.IP "" 4
+.
+.nf
+
+var app = express\.createServer(),
+    blog = express\.createServer();
+
+blog\.mounted(function(parent){
+    // parent is app
+    // \"this\" is blog
+});
+
+app\.use(blog);
 .
 .fi
 .

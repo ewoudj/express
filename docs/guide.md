@@ -39,10 +39,14 @@ prior to the environment specific callback.
 
 In the example below we only _dumpExceptions_, and respond with exception stack traces
 in _development_ mode, however for both environments we utilize _methodOverride_ and _bodyDecoder_.
+Note the use of _app.router_, which can (optionally) be used to mount the application routes,
+otherwise the first call to _app.{get,put,del,post}()_ will mount the routes.
 
     app.configure(function(){
 		app.use(connect.methodOverride());
 		app.use(connect.bodyDecoder());
+		app.use(app.router);
+		app.use(connect.staticProvider(__dirname + '/public'));
 	});
 	
 	app.configure('development', function(){
@@ -77,8 +81,7 @@ or more specifically _EXPRESS_ENV_, for example:
 Express supports the following settings out of the box:
 
   * _env_ Application environment set internally, use _app.set('env')_ on _Server#listen()_
-  * _home_ Application base path used with _res.redirect()_, when mounted defaults
-	to _Server#route_, otherwise "/". Assigned on _Server#listen()_.
+  * _home_ Application base path used for _res.redirect()_ and transparently handling mounted apps.
   * _views_ Root views directory defaulting to **CWD/views**
   * _view engine_ Default view engine name for views rendered without extensions
   * _reload views_ Reloads altered views, by default watches for _mtime_ changes with
@@ -616,6 +619,20 @@ becomes the local variable it is associated with.
 All views would now have _session_ available so that session data can be accessed via _session.name_ etc:
 
     <%= session.name %>
+
+### app.mounted(fn)
+
+Assign a callback _fn_ which is called when this _Server_ is passed to _Server#use()_.
+
+    var app = express.createServer(),
+        blog = express.createServer();
+    
+    blog.mounted(function(parent){
+        // parent is app
+        // "this" is blog
+    });
+    
+    app.use(blog);
 
 ### app.listen([port[, host]])
 

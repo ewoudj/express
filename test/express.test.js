@@ -158,8 +158,8 @@ module.exports = {
     
     'test #configure()': function(assert, beforeExit){
         var calls = [];
-        var server = express.createServer();
         process.env.EXPRESS_ENV = 'development';
+        var server = express.createServer();
         
         // Config blocks
         var ret = server.configure(function(){
@@ -180,6 +180,47 @@ module.exports = {
         beforeExit(function(){
             assert.eql(['any', 'dev'], calls);
         });
+    },
+    
+    'test #configure() immediate call': function(assert){
+        var app = express.createServer();
+
+        app.configure(function(){
+            app.use(connect.bodyDecoder());
+        });
+        
+        app.post('/', function(req, res){
+            res.send(req.param('name') || 'nope');
+        });
+
+        assert.response(app,
+            { url: '/', method: 'POST', data: 'name=tj', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }},
+            { body: 'tj' });
+    },
+
+    'test #configure() precedence': function(assert){
+        var app = express.createServer();
+    
+        app.configure(function(){
+            app.use(function(req, res, next){
+                res.writeHead(200, {});
+                res.write('first');
+                next();
+            });
+            app.use(app.router);
+            app.use(function(req, res, next){
+                res.end('last');
+            });
+        });
+        
+        app.get('/', function(req, res, params, next){
+            res.write(' route ');
+            next();
+        });
+    
+        assert.response(app,
+            { url: '/' },
+            { body: 'first route last' });
     },
     
     'test #set()': function(assert){
@@ -225,15 +266,29 @@ module.exports = {
     },
     
     'test mounting': function(assert){
-        var app = express.createServer(),
-            blog = express.createServer();
+        var called,
+            app = express.createServer(),
+            blog = express.createServer(),
+            map = express.createServer();
+
+        map.set('home', '/map');
+        
+        map.mounted(function(parent){
+            called = true;
+            assert.equal(this, map, 'mounted() is not in context of the child app');
+            assert.equal(app, parent, 'mounted() was not called with parent app');
+        });
         
         app.use('/blog', blog);
+        app.use('/contact', map);
         assert.equal('/blog', blog.route);
+        assert.equal('/contact', map.route);
+        assert.ok(called, 'mounted() hook failed');
         
         app.get('/', function(req, res){
-            assert.equal('/', app.set('home'), "home did not default /");
+            assert.equal('/', app.set('home'), "home did not default to /");
             assert.equal('/blog', blog.set('home'), "home did not default to Server#route when mounted");
+            assert.equal('/contact/map', map.set('home'), 'home did not prepend route on Server#use()');
             res.send('main app');
         });
 
